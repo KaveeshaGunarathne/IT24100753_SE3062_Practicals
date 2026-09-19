@@ -2,6 +2,7 @@
 import random
 from collections import deque
 import heapq
+import math
 
 class GreedyGridAgent:
     """A simple agent that tries to move around systematically to clear the grid."""
@@ -118,7 +119,37 @@ class SearchAgent:
                 new_cost = cost + 1
                 if new_cost < reached.get(next_state, float('inf')):
                     reached[next_state] = new_cost
-                    heapq.heappush(pq, (new_cost, next_state, path + [action]))
+        return []
+
+    def manhattan_distance(self, pos, goal):
+        return abs(pos[0] - goal[0]) + abs(pos[1] - goal[1])
+
+    def euclidean_distance(self, pos, goal):
+        return math.sqrt((pos[0] - goal[0])**2 + (pos[1] - goal[1])**2)
+
+    def astar_search(self, start_pos, goal_pos, walls, grid_size, heuristic_type='manhattan'):
+        pq = [(0, 0, start_pos, [])]
+        reached_states = set()
+        
+        while pq:
+            f_cost, g_cost, current_pos, path_taken = heapq.heappop(pq)
+            
+            if current_pos == goal_pos:
+                return path_taken
+                
+            if current_pos in reached_states:
+                continue
+            reached_states.add(current_pos)
+            
+            for neighbor, action in self.get_successors(current_pos, walls, grid_size):
+                if neighbor not in reached_states:
+                    g_new = g_cost + 1
+                    if heuristic_type == 'euclidean':
+                        h_new = self.euclidean_distance(neighbor, goal_pos)
+                    else:
+                        h_new = self.manhattan_distance(neighbor, goal_pos)
+                    f_new = g_new + h_new
+                    heapq.heappush(pq, (f_new, g_new, neighbor, path_taken + [action]))
         return []
 
     def sense_and_act(self, percept):
@@ -142,6 +173,8 @@ class SearchAgent:
                 self.plan = self.dfs_search(start, closest_food, walls, grid_size)
             elif self.active_algo == 'UCS':
                 self.plan = self.ucs_search(start, closest_food, walls, grid_size)
+            elif self.active_algo == 'AStar':
+                self.plan = self.astar_search(start, closest_food, walls, grid_size)
                 
         if self.plan:
             return self.plan.pop(0)
